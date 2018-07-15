@@ -9,6 +9,9 @@ path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 config = configparser.SafeConfigParser()
 config.read(os.path.join(path, "config"))
 
+#account doing the retweeting
+retweet_account = config.get("settings", "retweet_account")
+
 # your hashtag or search query and tweet language (empty = all languages)
 hashtag = config.get("settings", "search_query")
 
@@ -17,6 +20,12 @@ auto_follow = config.getboolean("settings", "auto_follow")
 
 # if you would only like to retweet people you follow (overrides auto-follow)
 only_retweet_friends = config.getboolean("settings", "only_retweet_friends")
+
+# if you only want to retweet people on a specific list
+try:
+    retweet_list = config.get("settings", "retweet_list")
+except:
+    retweet_list = False
 
 frequency = auto_follow = config.getint("settings", "run_frequency_in_minutes")
 
@@ -36,6 +45,7 @@ except:
 userBlacklist = []
 wordBlacklist = ["RT", u"♺"]
 friends = []
+list_members = []
 
 # build savepoint path + file
 hashedHashtag = hashlib.md5(hashtag.encode('ascii')).hexdigest()
@@ -48,15 +58,28 @@ auth = tweepy.OAuthHandler(config.get("twitter", "consumer_key"), config.get("tw
 auth.set_access_token(config.get("twitter", "access_token"), config.get("twitter", "access_token_secret"))
 api = tweepy.API(auth)
 
+# need to maintain a list because the is_list_member function on tweepy is broken
 def refresh_friends():
     try:
-        friends = api.friends_ids(config.get("settings", "retweet_account"))
+        global friends
+        friends = api.friends_ids(retweet_account)
         print("Friends refreshed")
     except Exception as e:
         print("friends refresh failed")
         print(e)
 
 refresh_friends()
+
+def refresh_list_members():
+    try:
+        global list_members
+        users = api.list_members(retweet_account,retweet_list)
+        for u in users:
+            list_members.append(u.id)
+        print("List memebers refreshed")
+    except Exception as e:
+        print("List refresh failed")
+        print(e)
 
 def retweet_bot():
 
@@ -77,6 +100,7 @@ def retweet_bot():
     try:
         for status in timelineIterator:
             timeline.append(status)
+
     except TweepError as e:
         print('Tweepy Error caught on timelineIterator: ' + str(e))
         if using_pd:
@@ -104,6 +128,9 @@ def retweet_bot():
     if only_retweet_friends:
         timeline = filter(lambda status: status.author.id in friends, timeline)
 
+    if retweet_list:
+        timeline = filter(lambda status: status.author.id in list_members, timeline)
+
     timeline = list(timeline)
     timeline.reverse()
 
@@ -117,6 +144,7 @@ def retweet_bot():
                   {"date": status.created_at,
                    "name": status.author.screen_name.encode('utf-8'),
                    "message": status.text.encode('utf-8')})
+
             api.retweet(status.id)
 
             if auto_follow and status.author.id not in friends:
@@ -147,6 +175,11 @@ def retweet_bot():
 
 schedule.every(frequency).minutes.do(retweet_bot)
 schedule.every(3).minutes.do(refresh_friends)
+
+if retweet_list:
+    refresh_list_members()
+    schedule.every(5).minutes.do(refresh_list_members)
+
 retweet_bot()
 
 while True:
