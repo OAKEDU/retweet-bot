@@ -27,7 +27,7 @@ Dependencies:
 4. pip install requirements
 5. `lambda invoke`
 
-Some details / links: #7
+Some details / links: https://github.com/OAKEDU/retweet-bot/issues/7
 
 ### Deploying
 6. Create a user in AWS if you don't have one and [put credentials in `.aws/credentials` config file](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)
