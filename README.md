@@ -16,28 +16,25 @@ Setup:
 - copy `sample-config` and rename to `config`
 - fill out the config file for your project (more info in the file)
 
-### If running locally...
-1. Install python 3. Maybe using virtualenv.
-2. ```pip install -r requirements.txt```
-3. ```python retweet.py```
+### Running Locally
+This project is meant to run as an AWS Lambda function and leverages a project called [python-lambda](https://github.com/nficano/python-lambda) to assist with the testing and deployment.
 
-### If using Docker...
-#### Setting up Google Cloud Storage
-Docker containers are meant to be stateless, so any files saved will be lost when the container stops running. To store the savepoint file, the docker container uses [gcsfuse](https://github.com/GoogleCloudPlatform/gcsfuse) to mount a Google Cloud Storage bucket and saves the file there. GCS was chosen because it has an [always free tier](https://cloud.google.com/free/docs/always-free-usage-limits).
-1. Create a Google Cloud account. Under storage, create a regional bucket (free).
-2. In `start.sh`, put your bucket name
-3. [Create and download a service account JSON google key](https://cloud.google.com/storage/docs/authentication#generating-a-private-key). This gives the bot access to your bucket. (This may not be required if you're running docker on a Google Compute Engine instance.)
-4. Put the key in the same folder as `retweet.py` and rename it to `google-key.json`
+Dependencies:
+1. pyenv (install via homebrew, add to path)
+2. pyenv-virtualenv (install via homebrew, add to path)
+3. create a virtualenv called retweet
 
-#### Run docker container
-1. [Get Docker](https://www.docker.com/)
-2. `docker-compose up`
-3. `docker-compose run bot`
+4. pip install requirements
+5. `lambda invoke`
 
-### Setting Up PagerDuty (optional)
-You can use PagerDuty to get alerted when common errors happen. To do this, generate a v2 API key and put it in the config file using this format. On a PD service, create an integration key that uses the Events API v2 and put that in the file as well.
-```
-[pagerduty]
-api_key = 
-integration_key = 
-```
+Some details / links: #7
+
+### Deploying
+6. Create a user in AWS if you don't have one and [put credentials in `.aws/credentials` config file](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html)
+7. Create a role with basic Lambda policy and put the name of it in the `role:` attr in `config.yaml` (I needed to put `service-role/` prefix in front of name.
+8. `lambda deploy`
+
+### Known Issues
+
+#### Savepoint
+Lambdas don't have storage and I didn't set up an s3 bucket yet. Right now it writes a savepoint to `/tmp` which is transient Lambda storage. You may need to clear the file locally to debug.
